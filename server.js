@@ -21,14 +21,18 @@ const r2Client = new S3Client({
     },
 });
 
-// 2. 이미지 업로드를 위한 Multer 설정 (메모리 저장 방식)
+// 2. 이미지 업로드를 위한 Multer 설정
 const upload = multer({ storage: multer.memoryStorage() });
 
 // [API 1] 게시글 전체 리스트 조회 (R)
 app.get('/api/posts', async (req, res) => {
-    const { data, error } = await supabase.from('posts').select('*').order('id', { ascending: false });
-    if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
+    try {
+        const { data, error } = await supabase.from('posts').select('*').order('id', { ascending: false });
+        if (error) throw error;
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // [API 2] 게시글 쓰기 (C) 및 Cloudflare R2 이미지 업로드
@@ -45,14 +49,15 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
                 Body: req.file.buffer,
                 ContentType: req.file.mimetype
             }));
-            // R2 엔드포인트 주소를 기반으로 대외 주소 생성 (서브도메인 환경에 맞춰 조정 필요)
-            const publicEndpoint = process.env.R2_ENDPOINT.replace('://cloudflarestorage.com', 'r2.dev');
-            image_url = `${publicEndpoint}/${process.env.R2_BUCKET_NAME}/${fileName}`;
+            
+            // 주소 파싱 방식 안전하게 변경
+            const cleanedEndpoint = process.env.R2_ENDPOINT.replace('cloudflarestorage.com', 'dev');
+            image_url = `${cleanedEndpoint}/${process.env.R2_BUCKET_NAME}/${fileName}`;
         }
 
         const { data, error } = await supabase.from('posts').insert([{ title, content, image_url }]).select();
         if (error) throw error;
-        res.json(data[0]);
+        res.json(data);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -63,7 +68,7 @@ app.put('/api/posts/:id', async (req, res) => {
     const { title, content } = req.body;
     const { data, error } = await supabase.from('posts').update({ title, content }).eq('id', req.params.id).select();
     if (error) return res.status(500).json({ error: error.message });
-    res.json(data[0]);
+    res.json(data);
 });
 
 // [API 4] 게시글 삭제 (D)

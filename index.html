@@ -65,19 +65,29 @@
 
         // 페이지 로드 시 초기 리스트 조회
         async function fetchPosts() {
-            const res = await fetch('/api/posts');
-            allPosts = await res.json();
-            const tbody = document.getElementById('post-list');
-            tbody.innerHTML = allPosts.map(post => `
-                <tr onclick="loadPost(${post.id})">
-                    <td>${post.id}</td>
-                    <td>${post.title}</td>
-                    <td>${new Date(post.created_at).toLocaleDateString()}</td>
-                </tr>
-            `).join('');
+            try {
+                const res = await fetch('/api/posts');
+                allPosts = await res.json();
+                const tbody = document.getElementById('post-list');
+                
+                if (allPosts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#64748b;">데이터가 없습니다.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = allPosts.map(post => `
+                    <tr onclick="loadPost(${post.id})">
+                        <td>${post.id}</td>
+                        <td>${post.title}</td>
+                        <td>${new Date(post.created_at).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("데이터 로드 오류:", err);
+            }
         }
 
-        // 특정 항목 클릭 시 폼에 데이터 로드 (읽기/수정 모드 변환)
+        // 특정 항목 클릭 시 폼에 데이터 로드
         function loadPost(id) {
             const post = allPosts.find(p => p.id === id);
             if (!post) return;
@@ -87,7 +97,6 @@
             document.getElementById('content').value = post.content;
             document.getElementById('form-title').innerText = `게시물 상세 및 수정 (No. ${post.id})`;
             document.getElementById('btn-delete').style.display = 'block';
-            document.getElementById('file-group').style.style = 'none'; // 수정 시 파일 필드는 숨김 혹은 단순 처리
 
             const preview = document.getElementById('preview');
             if (post.image_url) {
@@ -104,21 +113,20 @@
             document.getElementById('post-form').reset();
             document.getElementById('form-title').innerText = '신규 게시물 등록';
             document.getElementById('btn-delete').style.display = 'none';
-            document.getElementById('file-group').style.display = 'block';
             document.getElementById('preview').style.display = 'none';
         }
 
-        // 파일 업로드 시 이미지 미리보기
+        // 파일 업로드 시 이미지 미리보기 오타 수정
         function previewImage(event) {
             const preview = document.getElementById('preview');
-            const file = event.target.files[0];
-            if (file) {
-                preview.src = URL.createObjectURL(file);
+            const files = event.target.files;
+            if (files && files.length > 0) {
+                preview.src = URL.createObjectURL(files[0]);
                 preview.style.display = 'block';
             }
         }
 
-        // 등록 및 수정 서밋 처리
+        // 등록 및 수정 서밋 처리 버그 수정
         async function handleSubmit(event) {
             event.preventDefault();
             const id = document.getElementById('post-id').value;
@@ -133,13 +141,14 @@
                     body: JSON.stringify({ title, content })
                 });
             } else {
-                // 신규 등록 (POST - FormData 활용 멀티파트 전송)
+                // 신규 등록 (POST)
                 const formData = new FormData();
                 formData.append('title', title);
                 formData.append('content', content);
+                
                 const fileInput = document.getElementById('image');
-                if (fileInput.files[0]) {
-                    formData.append('image', fileInput.files[0]);
+                if (fileInput.files && fileInput.files.length > 0) {
+                    formData.append('image', fileInput.files[0]); // 복수 파일 객체 참조 버그 수정
                 }
 
                 await fetch('/api/posts', {
