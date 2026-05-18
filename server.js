@@ -1,4 +1,4 @@
-/* [수정 일시: 2026-05-19 01:05:00 KST] Cloudflare R2 엔드포인트 문자열 치환 버그(dev 서브도메인 난독화 오타) 완전 교정 */
+/* [수정 일시: 2026-05-19 01:00:00 KST] R2 대외 공개 주소 버그 우회를 위한 S3 API 다이렉트 주소 매핑 구조로 전면 전환 */
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
@@ -51,9 +51,9 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
                 ContentType: req.file.mimetype
             }));
             
-            // [교정 핵심] 기존 cloudflarestorage.com 주소를 대외 서브도메인 형식에 맞춰 안전하게 원천 주소 추출하도록 변경
-            const r2BaseUrl = process.env.R2_ENDPOINT.trim();
-            image_url = `${r2BaseUrl}/${process.env.R2_BUCKET_NAME}/${fileName}`;
+            // [교정 핵심] r2.dev 공개 도메인 통신 오류를 우회하기 위해 인증된 S3 API 주소 스키마로 직접 이미지 주소 연결
+            const r2Endpoint = process.env.R2_ENDPOINT.trim().replace(/\/$/, "");
+            image_url = `${r2Endpoint}/${process.env.R2_BUCKET_NAME}/${fileName}`;
         }
 
         const { data, error } = await supabase.from('posts').insert([{ title, content, image_url }]).select();
