@@ -1,4 +1,4 @@
-/* [수정 일시: 2026-05-19 01:43:00 KST] CORS 우회용 공용 응답 헤더 탑재 및 파일 바이너리 세팅 완료 */
+/* [수정 일시: 2026-05-19 02:00:00 KST] 본인의 실제 Cloudflare R2 계정 고유 해시 ID(bb4a9796...) 규격으로 주소 일치화 완료 */
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
@@ -10,7 +10,6 @@ const ExcelJS = require('exceljs');
 const app = express();
 app.use(express.json());
 
-// 모든 도메인에서의 이미지 자원 요청(CORS)을 허용하는 전역 미들웨어 설정
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -56,12 +55,12 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
                 Bucket: process.env.R2_BUCKET_NAME,
                 Key: fileName,
                 Body: req.file.buffer,
-                ContentType: req.file.mimetype // 브라우저가 정적 이미지 파일로 즉시 식별하도록 타입 지정
+                ContentType: req.file.mimetype 
             }));
             
-            const targetAccountHash = "d2bd09165e854aae8e430eed2401d673";
-            // [정정] pub- 접두사를 붙여 브라우저 정적 서빙 주소 규격 완벽 일치 보장
-            image_url = `https://pub-${targetAccountHash}.r2.dev/${fileName}`;
+            // [교정 핵심] 본인의 진짜 Cloudflare 실서버 계정 고유 ID 해시값으로 완벽히 동기화 타겟팅 변경
+            const realAccountHash = "bb4a97963e754ec4a974aad4402fb137";
+            image_url = `https://pub-${realAccountHash}.r2.dev/${process.env.R2_BUCKET_NAME}/${fileName}`;
         }
 
         const { data, error } = await supabase.from('posts').insert([{ title, content, image_url }]).select();
