@@ -1,3 +1,4 @@
+/* [수정 일시: 2026-05-19 00:23:00 KST] HTML 인라인 스타일 및 전환 효과 전면 흡수 완료 */
 :root {
     --primary: #1e293b;
     --primary-light: #334155;
@@ -37,14 +38,15 @@ body {
 
 /* Layout */
 .erp-container {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 25px;
+    display: block;
     padding: 30px;
     max-width: 1600px;
     margin: 0 auto;
     width: calc(100% - 60px);
+}
+.list-header-actions {
+    display: flex;
+    gap: 10px;
 }
 
 /* Base Card Style */
@@ -91,7 +93,16 @@ body {
 /* Footer */
 .erp-footer { background: var(--primary); color: #94a3b8; text-align: center; padding: 15px; font-size: 0.8rem; margin-top: auto; }
 
-/* Responsive Grid for Tablets/Mobiles */
-@media (max-width: 1024px) {
-    .erp-container { grid-template-columns: 1fr; }
+/* Section Control Layout */
+.page-section {
+    display: none;
+}
+.page-section.active {
+    display: block;
+}
+.form-buttons-wrapper {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
 }

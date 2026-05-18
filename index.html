@@ -1,4 +1,5 @@
-<!DOCTYPE html><!--12:15-->
+<!-- [수정 일시: 2026-05-19 00:23:00 KST] 인라인 이벤트 리스너 및 자바스크립트 전면 제거 완료 -->
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -7,204 +8,65 @@
     <link rel="stylesheet" href="style.css">
     <script src="gnb.js"></script>
     <script src="footer.js"></script>
-    <style>
-        .erp-container {
-            display: block;
-            transition: all 0.3s ease;
-        }
-        .erp-container.split-mode {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 25px;
-        }
-        .list-header-actions {
-            display: flex;
-            gap: 10px;
-        }
-    </style>
 </head>
 <body>
 
-    <div class="erp-container" id="main-container">
-        <!-- 왼쪽: 리스트 섹션 (첫 화면 전체화면 꽉 참) -->
-        <div class="erp-card">
-            <div class="card-title">
-                <span>게시물 마스터 리스트</span>
-                <div class="list-header-actions">
-                    <button class="btn btn-primary" onclick="openWriteMode()">➕ 신규 게시물 등록</button>
-                    <button class="btn btn-excel" onclick="downloadExcel()">📊 엑셀 다운로드</button>
+    <div class="erp-container">
+        <!-- 1. 리스트 화면 섹션 -->
+        <div id="section-list" class="page-section">
+            <div class="erp-card">
+                <div class="card-title">
+                    <span>게시물 마스터 리스트</span>
+                    <div class="list-header-actions">
+                        <button type="button" id="btn-open-write" class="btn btn-primary">➕ 신규 게시물 등록</button>
+                        <button type="button" id="btn-download-excel" class="btn btn-excel">📊 엑셀 다운로드</button>
+                    </div>
                 </div>
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th>순번</th>
+                            <th>제목</th>
+                            <th>작성일</th>
+                        </tr>
+                    </thead>
+                    <tbody id="post-list">
+                        <!-- 데이터 동적 삽입 -->
+                    </tbody>
+                </table>
             </div>
-            <table class="erp-table">
-                <thead>
-                    <tr>
-                        <th>순번</th>
-                        <th>제목</th>
-                        <th>작성일</th>
-                    </tr>
-                </thead>
-                <tbody id="post-list">
-                    <!-- 데이터 동적 삽입 -->
-                </tbody>
-            </table>
         </div>
 
-        <!-- 오른쪽: 글쓰기/읽기/수정 통합 폼 섹션 (JS 강제 제어 노출) -->
-        <div class="erp-card" id="form-card" style="display: none;">
-            <div class="card-title">
-                <span id="form-title">신규 게시물 등록</span>
-                <button class="btn btn-secondary" onclick="closeForm()">창 닫기 ✖</button>
+        <!-- 2. 단독 작성 및 편집 폼 섹션 -->
+        <div id="section-form" class="page-section">
+            <div class="erp-card">
+                <div class="card-title">
+                    <span id="form-title">신규 게시물 등록</span>
+                    <button type="button" id="btn-close-form" class="btn btn-secondary">목록으로 가기 ✖</button>
+                </div>
+                <form id="post-form">
+                    <input type="hidden" id="post-id">
+                    <div class="form-group">
+                        <label>제목</label>
+                        <input type="text" id="title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>내용</label>
+                        <textarea id="content" class="form-control" rows="6"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>이미지 첨부 (모바일의 경우 카메라 촬영 가능)</label>
+                        <input type="file" id="image" class="form-control" accept="image/*" capture="environment">
+                        <img id="preview" class="img-preview">
+                    </div>
+                    <div class="form-buttons-wrapper">
+                        <button type="button" id="btn-delete" class="btn btn-danger">삭제</button>
+                        <button type="submit" id="btn-submit" class="btn btn-primary">저장</button>
+                    </div>
+                </form>
             </div>
-            <form id="post-form" onsubmit="handleSubmit(event)">
-                <input type="hidden" id="post-id">
-                <div class="form-group">
-                    <label>제목</label>
-                    <input type="text" id="title" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>내용</label>
-                    <textarea id="content" class="form-control" rows="6"></textarea>
-                </div>
-                <div class="form-group" id="file-group">
-                    <label>이미지 첨부 (모바일의 경우 카메라 촬영 가능)</label>
-                    <input type="file" id="image" class="form-control" accept="image/*" capture="environment" onchange="previewImage(event)">
-                    <img id="preview" class="img-preview">
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" id="btn-delete" class="btn btn-danger" style="display: none;" onclick="deletePost()">삭제</button>
-                    <button type="submit" id="btn-submit" class="btn btn-primary">저장</button>
-                </div>
-            </form>
         </div>
     </div>
 
-    <script>
-        let allPosts = [];
-
-        async function fetchPosts() {
-            try {
-                const res = await fetch('/api/posts');
-                allPosts = await res.json();
-                const tbody = document.getElementById('post-list');
-                
-                if (!allPosts || allPosts.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#64748b;">데이터가 없습니다.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = allPosts.map(post => `
-                    <tr onclick="loadPost(${post.id})">
-                        <td>${post.id}</td>
-                        <td>${post.title}</td>
-                        <td>${new Date(post.created_at).toLocaleDateString()}</td>
-                    </tr>
-                `).join('');
-            } catch (err) {
-                console.error("데이터 로드 오류:", err);
-            }
-        }
-
-        // 스크립트로 스타일 다이렉트 제어로 캐시 우회 보장
-        function openWriteMode() {
-            resetForm();
-            document.getElementById('main-container').classList.add('split-mode');
-            document.getElementById('form-card').style.display = 'block';
-        }
-
-        function closeForm() {
-            document.getElementById('main-container').classList.remove('split-mode');
-            document.getElementById('form-card').style.display = 'none';
-        }
-
-        function loadPost(id) {
-            const post = allPosts.find(p => p.id === id);
-            if (!post) return;
-
-            document.getElementById('main-container').classList.add('split-mode');
-            document.getElementById('form-card').style.display = 'block';
-
-            document.getElementById('post-id').value = post.id;
-            document.getElementById('title').value = post.title;
-            document.getElementById('content').value = post.content;
-            document.getElementById('form-title').innerText = `게시물 상세 및 수정 (No. ${post.id})`;
-            document.getElementById('btn-delete').style.display = 'block';
-
-            const preview = document.getElementById('preview');
-            if (post.image_url) {
-                preview.src = post.image_url;
-                preview.style.display = 'block';
-            } else {
-                preview.style.display = 'none';
-            }
-        }
-
-        function resetForm() {
-            document.getElementById('post-id').value = '';
-            document.getElementById('post-form').reset();
-            document.getElementById('form-title').innerText = '신규 게시물 등록';
-            document.getElementById('btn-delete').style.display = 'none';
-            document.getElementById('preview').style.display = 'none';
-        }
-
-        function previewImage(event) {
-            const preview = document.getElementById('preview');
-            const files = event.target.files;
-            if (files && files.length > 0) {
-                preview.src = URL.createObjectURL(files[0]);
-                preview.style.display = 'block';
-            }
-        }
-
-        async function handleSubmit(event) {
-            event.preventDefault();
-            const id = document.getElementById('post-id').value;
-            const title = document.getElementById('title').value;
-            const content = document.getElementById('content').value;
-
-            if (id) {
-                await fetch(`/api/posts/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content })
-                });
-            } else {
-                const formData = new FormData();
-                formData.append('title', title);
-                formData.append('content', content);
-                
-                const fileInput = document.getElementById('image');
-                if (fileInput.files && fileInput.files.length > 0) {
-                    formData.append('image', fileInput.files[0]);
-                }
-
-                await fetch('/api/posts', {
-                    method: 'POST',
-                    body: formData
-                });
-            }
-            closeForm();
-            fetchPosts();
-        }
-
-        async function deletePost() {
-            const id = document.getElementById('post-id').value;
-            if (id && confirm('정말 이 게시물을 삭제하시겠습니까?')) {
-                await fetch(`/api/posts/${id}`, { method: 'DELETE' });
-                closeForm();
-                fetchPosts();
-            }
-        }
-
-        function downloadExcel() {
-            window.location.href = '/api/posts/excel';
-        }
-
-        window.onload = () => {
-            // 첫 진입 시 무조건 초기 상태 정비
-            document.getElementById('main-container').classList.remove('split-mode');
-            document.getElementById('form-card').style.display = 'none';
-            fetchPosts();
-        };
-    </script>
 </body>
 </html>
