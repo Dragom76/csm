@@ -1,4 +1,4 @@
-/* [수정 일시: 2026-05-19 01:10:00 KST] R2 공개 도메인 규격 오류 교정 (pub- 접두사 강제 하드코딩 결합) */
+/* [수정 일시: 2026-05-19 01:15:00 KST] R2 계정 ID 직접 대입 바인딩으로 문자열 변환 처리 버그 영구 제거 */
 let allPosts = [];
 
 document.addEventListener("DOMContentLoaded", () => {

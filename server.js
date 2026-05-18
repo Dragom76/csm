@@ -1,4 +1,4 @@
-/* [수정 일시: 2026-05-19 01:10:00 KST] R2 공개 도메인 규격 오류 교정 (pub- 접두사 강제 하드코딩 결합) */
+/* [수정 일시: 2026-05-19 01:15:00 KST] R2 계정 ID 직접 대입 바인딩으로 문자열 변환 처리 버그 영구 제거 */
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
@@ -51,13 +51,10 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
                 ContentType: req.file.mimetype
             }));
             
-            // [교정 핵심] 복잡한 정규식 대신 오작동 없는 안전한 문자열 치환 방식으로 변경
-            // 'https://cloudflarestorage.com' -> 'https://pub-계정ID.r2.dev' 형태로 완벽 치환 보장
-            const endpointStr = process.env.R2_ENDPOINT.trim();
-            const cleanUrl = endpointStr.replace('https://', '').replace('.r2.cloudflarestorage.com', '');
-            
-            // 정확한 Cloudflare Public Development URL 표준 포맷 매핑
-            image_url = `https://pub-${cleanUrl}.r2.dev/${process.env.R2_BUCKET_NAME}/${fileName}`;
+            // [교정 핵심] 파싱 로직의 가변성을 배제하기 위해, 실제 활성화된 고정 계정 해시 ID 주소로 직접 할당
+            // 수식이나 치환 부작용 없이 완벽한 표준 pub- 도메인을 강제 정비합니다.
+            const targetAccountHash = "d2bd09165e854aae8e430eed2401d673";
+            image_url = `https://pub-${targetAccountHash}.r2.dev/${process.env.R2_BUCKET_NAME}/${fileName}`;
         }
 
         const { data, error } = await supabase.from('posts').insert([{ title, content, image_url }]).select();
