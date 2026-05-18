@@ -1,4 +1,4 @@
-<!-- [수정 일시: 2026-05-19 00:37:00 KST] 단독 독립 격리형 모듈 화면 컴포넌트 마크업 설계 -->
+<!-- [수정 일시: 2026-05-19 02:22:00 KST] 리스트 엑셀 버튼 제거 및 상세 폼 레이아웃 내로 이관 완료 -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -12,14 +12,13 @@
 <body>
 
     <div class="erp-container">
-        <!-- 1. 리스트 단독 화면 섹션 -->
+        <!-- 1. 리스트 단독 화면 섹션 (엑셀 다운로드 버튼 제거됨) -->
         <div id="section-list" class="page-section">
             <div class="erp-card">
                 <div class="card-title">
                     <span>게시물 마스터 리스트</span>
                     <div class="list-header-actions">
                         <button type="button" id="btn-open-write" class="btn btn-primary">➕ 신규 게시물 등록</button>
-                        <button type="button" id="btn-download-excel" class="btn btn-excel">📊 엑셀 다운로드</button>
                     </div>
                 </div>
                 <table class="erp-table">
@@ -37,12 +36,16 @@
             </div>
         </div>
 
-        <!-- 2. 작성/읽기/수정 격리 독립 화면 섹션 -->
+        <!-- 2. 작성/읽기/수정 격리 독립 화면 섹션 (상세페이지 내 엑셀 버튼 배치) -->
         <div id="section-form" class="page-section">
             <div class="erp-card">
                 <div class="card-title">
                     <span id="form-title">신규 게시물 등록</span>
-                    <button type="button" id="btn-close-form" class="btn btn-secondary">목록으로 가기 ✖</button>
+                    <div class="list-header-actions">
+                        <!-- 요구사항: 엑셀 다운로드 단추를 상세페이지 내부 조작 영역으로 이관 -->
+                        <button type="button" id="btn-download-excel" class="btn btn-excel" style="display: none;">📊 엑셀 다운로드</button>
+                        <button type="button" id="btn-close-form" class="btn btn-secondary">목록으로 가기 ✖</button>
+                    </div>
                 </div>
                 <form id="post-form">
                     <input type="hidden" id="post-id">
@@ -54,9 +57,11 @@
                         <label>내용</label>
                         <textarea id="content" class="form-control" rows="6"></textarea>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="image-upload-wrapper">
                         <label>이미지 첨부 (모바일의 경우 카메라 촬영 가능)</label>
                         <input type="file" id="image" class="form-control" accept="image/*" capture="environment">
+                    </div>
+                    <div class="form-group">
                         <img id="preview" class="img-preview">
                     </div>
                     <div class="form-buttons-wrapper">

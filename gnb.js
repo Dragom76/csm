@@ -1,9 +1,7 @@
-/* [수정 일시: 2026-05-19 02:18:00 KST] 한글 및 특수문자 깨짐 오류 방지를 위해 업로드 파일명을 영문+숫자로 자동 강제 변환 */
+/* [수정 일시: 2026-05-19 02:22:00 KST] 상세조회 컨텍스트 내부 엑셀 제어 토글 및 기존 내용 수정 스위치 보완 완료 */
 let allPosts = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("🔍 [로그] ERP 시스템 프론트엔드가 구동되었습니다.");
-    
     const gnbHTML = `
         <header class="erp-header">
             <div class="header-top">
@@ -42,28 +40,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function fetchPosts() {
-    console.log("📡 [로그] 백엔드 서버(/api/posts)에 데이터를 요청합니다...");
     try {
         const res = await fetch('/api/posts');
-        
-        console.log("📊 [로그] 서버 응답 상태 코드:", res.status);
-        if (!res.ok) {
-            const errorText = await res.text();
-            console.error("❌ [로그] 서버가 에러를 반환했습니다. 내용:", errorText);
-            throw new Error();
-        }
-
+        if (!res.ok) throw new Error();
         allPosts = await res.json();
-        console.log("📦 [로그] 데이터베이스로부터 받아온 실시간 데이터 목록:", allPosts);
-        
         const tbody = document.getElementById('post-list');
-        if (!tbody) {
-            console.error("❌ [로그] HTML 내부에 'post-list' ID를 가진 tbody 태그를 찾을 수 없습니다.");
-            return;
-        }
-
+        
+        if (!tbody) return;
         if (!allPosts || allPosts.length === 0) {
-            console.warn("⚠️ [로그] 통신은 성공했으나 데이터베이스에 저장된 게시글이 0개(비어있음)입니다.");
             tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#64748b;">데이터가 없습니다.</td></tr>';
             return;
         }
@@ -82,11 +66,8 @@ async function fetchPosts() {
                 if (id) loadPost(parseInt(id));
             });
         });
-        console.log("✅ [로그] 화면 테이블에 데이터 맵핑이 정상 완료되었습니다.");
-
     } catch (err) {
-        console.error("💥 [로그] 최상위 데이터 통신 예외 에러 발생:", err);
-        alert("데이터베이스 정보를 읽어오지 못했습니다. F12 콘솔 로그를 확인해 주세요.");
+        alert("데이터베이스 정보를 읽어오지 못했습니다.");
     }
 }
 
@@ -104,9 +85,12 @@ function openWriteMode() {
     resetForm();
     document.getElementById('form-title').innerText = '신규 게시물 등록';
     document.getElementById('btn-delete').style.display = 'none';
+    document.getElementById('btn-download-excel').style.display = 'none'; // 등록 모드일 땐 엑셀 숨김
+    document.getElementById('image-upload-wrapper').style.display = 'block'; // 새 글 작성 시 파일 필드 활성화
     showFormView();
 }
 
+// 상세 보기 및 기존 내용 수정 제어 활성화
 function loadPost(id) {
     const post = allPosts.find(p => p.id === id);
     if (!post) return;
@@ -115,7 +99,11 @@ function loadPost(id) {
     document.getElementById('title').value = post.title;
     document.getElementById('content').value = post.content;
     document.getElementById('form-title').innerText = `게시물 상세 및 수정 (No. ${post.id})`;
+    
+    // 조작 스위치 노출 상태 정비
     document.getElementById('btn-delete').style.display = 'block';
+    document.getElementById('btn-download-excel').style.display = 'block'; // 상세 페이지 진입 시 엑셀 버튼 오픈
+    document.getElementById('image-upload-wrapper').style.display = 'none'; // 기존 내용 수정 시에는 이미지 필드 제외 처리
 
     const preview = document.getElementById('preview');
     if (post.image_url) {
@@ -150,13 +138,14 @@ async function handleSubmit(event) {
 
     try {
         if (id) {
+            // [기능 보완] 기존 내용을 수정한 후 서버(PUT)에 최종 반영 처리
             const res = await fetch(`/api/posts/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, content })
             });
             if (!res.ok) throw new Error();
-            alert('🎉 성공: 게시물이 정상적으로 수정되었습니다.');
+            alert('🎉 성공: 기존 내용이 정상적으로 수정 및 업데이트되었습니다.');
         } else {
             const formData = new FormData();
             formData.append('title', title);
@@ -177,7 +166,7 @@ async function handleSubmit(event) {
         showListView();
         fetchPosts();
     } catch (err) {
-        alert('❌ 실패: 서버 반영에 실패했습니다.');
+        alert('❌ 실패: 서버 통신 오류가 발생했습니다.');
     }
 }
 
