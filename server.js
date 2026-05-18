@@ -1,4 +1,4 @@
-/* [수정 일시: 2026-05-19 02:00:00 KST] 본인의 실제 Cloudflare R2 계정 고유 해시 ID(bb4a9796...) 규격으로 주소 일치화 완료 */
+/* [수정 일시: 2026-05-19 02:10:00 KST] 본인의 실제 Cloudflare R2 계정 고유 해시 ID(bb4a9796...) 규격으로 주소 일치화 완료 */
 require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
@@ -60,7 +60,7 @@ app.post('/api/posts', upload.single('image'), async (req, res) => {
             
             // [교정 핵심] 본인의 진짜 Cloudflare 실서버 계정 고유 ID 해시값으로 완벽히 동기화 타겟팅 변경
             const realAccountHash = "bb4a97963e754ec4a974aad4402fb137";
-            image_url = `https://pub-${realAccountHash}.r2.dev/${process.env.R2_BUCKET_NAME}/${fileName}`;
+            image_url = `https://pub-${realAccountHash}.r2.dev/${fileName}`;
         }
 
         const { data, error } = await supabase.from('posts').insert([{ title, content, image_url }]).select();
