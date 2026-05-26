@@ -12,8 +12,16 @@ const app  = express();
 const port = process.env.PORT || 3000;
 
 // ── PostgreSQL 연결 풀 ─────────────────────────────────────────
+// DATABASE_URL 우선, 없으면 SUPABASE_URL + DB_PASSWORD로 조립
+function buildDbUrl() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const sup = process.env.SUPABASE_URL || '';
+  const ref = sup.replace('https://', '').replace('.supabase.co', '');
+  const pw  = encodeURIComponent(process.env.DB_PASSWORD || '');
+  return `postgresql://postgres:${pw}@db.${ref}.supabase.co:5432/postgres`;
+}
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: buildDbUrl(),
   ssl: { rejectUnauthorized: false }
 });
 
@@ -52,12 +60,13 @@ const OAUTH = {
 // ── Cloudflare R2 ──────────────────────────────────────────────
 const r2 = new S3Client({
   region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  endpoint: process.env.R2_ENDPOINT,
   credentials: {
     accessKeyId:     process.env.R2_ACCESS_KEY_ID     || '',
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
   },
 });
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-bb4a97963e754ec4a974aad4402fb137.r2.dev';
 
 // ── Multer ─────────────────────────────────────────────────────
 const upload = multer({ storage: multer.memoryStorage() });
@@ -106,7 +115,7 @@ async function uploadToR2(file) {
     Body: file.buffer,
     ContentType: file.mimetype,
   }));
-  return `${process.env.R2_PUBLIC_URL}/${fname}`;
+  return `${R2_PUBLIC_URL}/${fname}`;
 }
 
 // ── 유효성 검사 ───────────────────────────────────────────────
