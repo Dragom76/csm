@@ -144,6 +144,7 @@ const ROLES = {
   PENDING: '미승인',
 };
 const MGMT_ROLES = ['ADMIN', 'CM', 'SA'];
+const PROJECT_DELETE_ROLES = ['ADMIN', 'PM'];
 
 // ════════════════════════════════════════════════════════════
 //  인증 미들웨어
@@ -540,6 +541,46 @@ app.put('/api/projects/:id', requireAuth(['ADMIN']), async (req, res) => {
     );
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: '수정 실패' }); }
+});
+
+app.delete('/api/projects/:id', requireAuth(PROJECT_DELETE_ROLES), async (req, res) => {
+  const u = req.session.user;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    if (u.role === 'PM') {
+      const allowed = await client.query(
+        `SELECT 1 FROM project_members
+         WHERE project_id=$1 AND user_id=$2`,
+        [req.params.id, u.id]
+      );
+      if (!allowed.rows.length) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: '권한 없음' });
+      }
+    }
+
+    const result = await client.query(
+      `UPDATE projects
+       SET status='INACTIVE'
+       WHERE project_id=$1 AND status='ACTIVE'`,
+      [req.params.id]
+    );
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: '프로젝트가 없습니다.' });
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch(e) {
+    await client.query('ROLLBACK');
+    console.error(e);
+    return res.status(500).json({ error: '삭제 실패' });
+  } finally {
+    client.release();
+  }
 });
 
 app.get('/api/projects/:id/members', requireAuth(MGMT_ROLES), async (req, res) => {

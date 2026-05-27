@@ -142,11 +142,15 @@ header{background:#fff;color:var(--g800);padding:0 24px;height:62px;
 .proj-card-stats{display:flex;gap:16px;font-size:.8rem;color:var(--g500);}
 .proj-card-stats span{display:flex;align-items:center;gap:4px;}
 .proj-card-ft{padding:10px 20px;border-top:1px solid var(--g100);
-  display:flex;justify-content:flex-end;background:var(--g50);}
+  display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;background:var(--g50);}
 .btn-proj-settings{background:#fff;border:1px solid var(--g300);color:var(--g600);
   padding:4px 14px;height:30px;border-radius:var(--r-sm);cursor:pointer;
   font-size:.78rem;font-weight:600;transition:all .15s;}
 .btn-proj-settings:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.btn-proj-delete{background:#fff;border:1px solid var(--danger);color:var(--danger);
+  padding:4px 14px;height:30px;border-radius:var(--r-sm);cursor:pointer;
+  font-size:.78rem;font-weight:700;transition:all .15s;}
+.btn-proj-delete:hover{background:var(--danger);color:#fff;border-color:var(--danger);}
 
 /* ══ 상세 보기 ══════════════════════════════════════════════ */
 .detail-card{background:var(--surface);border-radius:var(--r-lg);
@@ -324,6 +328,7 @@ textarea.form-input{resize:vertical;min-height:120px;}
   .proj-card-hd{padding:16px;}
   .proj-card-body{padding:12px 16px;}
   .proj-card-ft{padding:8px 16px;}
+  .proj-card-ft button{flex:1 1 96px;min-width:0;}
 }
 </style>
 </head>
@@ -623,7 +628,12 @@ textarea.form-input{resize:vertical;min-height:120px;}
    인증 초기화
 ════════════════════════════════ */
 const MGMT_ROLES = ['ADMIN','CM','SA'];
+const PROJECT_DELETE_ROLES = ['ADMIN','PM'];
 let currentUser  = null;
+
+function canDeleteProject() {
+  return currentUser && PROJECT_DELETE_ROLES.includes(currentUser.role);
+}
 
 async function initAuth() {
   try {
@@ -1355,14 +1365,23 @@ async function loadDashboard() {
           </div>
         </div>`;
       card.onclick = () => enterProject(p.PROJECT_ID, p.PROJECT_NAME);
-      if (currentUser && currentUser.role === 'ADMIN') {
+      if (currentUser && (currentUser.role === 'ADMIN' || canDeleteProject())) {
         const ft = document.createElement('div');
         ft.className = 'proj-card-ft';
-        const settingsBtn = document.createElement('button');
-        settingsBtn.className = 'btn-proj-settings';
-        settingsBtn.textContent = '⚙ 설정';
-        settingsBtn.onclick = e => { e.stopPropagation(); openProjectSettings(p); };
-        ft.appendChild(settingsBtn);
+        if (currentUser.role === 'ADMIN') {
+          const settingsBtn = document.createElement('button');
+          settingsBtn.className = 'btn-proj-settings';
+          settingsBtn.textContent = '설정';
+          settingsBtn.onclick = e => { e.stopPropagation(); openProjectSettings(p); };
+          ft.appendChild(settingsBtn);
+        }
+        if (canDeleteProject()) {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'btn-proj-delete';
+          deleteBtn.textContent = '삭제';
+          deleteBtn.onclick = e => { e.stopPropagation(); deleteProject(p); };
+          ft.appendChild(deleteBtn);
+        }
         card.appendChild(ft);
       }
       grid.appendChild(card);
@@ -1416,6 +1435,31 @@ async function createProject() {
     if (r.ok) { closeProjModal(); loadDashboard(); }
     else { errEl.textContent = d.error||'생성 실패'; errEl.className='modal-msg err'; }
   } catch(e) { errEl.textContent = '오류 발생'; errEl.className='modal-msg err'; }
+}
+
+async function deleteProject(p) {
+  if (!canDeleteProject()) {
+    alert('프로젝트 삭제 권한이 없습니다.');
+    return;
+  }
+  if (!confirm(`프로젝트 "${p.PROJECT_NAME}"을 삭제하시겠습니까?\n삭제한 프로젝트는 목록에서 숨겨집니다.`)) return;
+  try {
+    const r = await fetch('/api/projects/'+p.PROJECT_ID, { method:'DELETE' });
+    const d = await r.json();
+    if (r.ok) {
+      if (currentProjectId === p.PROJECT_ID) {
+        currentProjectId = null;
+        currentProjectName = '';
+        document.getElementById('hdProjName').style.display = 'none';
+        document.getElementById('newBtn').style.display = 'none';
+      }
+      await loadDashboard();
+    } else {
+      alert(d.error || '삭제 실패');
+    }
+  } catch(e) {
+    alert('오류 발생');
+  }
 }
 
 /* ════════════════════════════════
