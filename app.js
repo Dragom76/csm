@@ -12,18 +12,24 @@ const app  = express();
 const port = process.env.PORT || 3000;
 
 // ── PostgreSQL 연결 풀 ─────────────────────────────────────────
-// DATABASE_URL 우선, 없으면 SUPABASE_URL + DB_PASSWORD로 조립
-function buildDbUrl() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
-  const sup = process.env.SUPABASE_URL || '';
-  const ref = sup.replace('https://', '').replace('.supabase.co', '');
-  const pw  = encodeURIComponent(process.env.DB_PASSWORD || '');
-  return `postgresql://postgres:${pw}@db.${ref}.supabase.co:5432/postgres`;
+// DB 연결 설정 (특수문자 비밀번호 대응 - URL 파싱 우회)
+function buildDbConfig() {
+  if (process.env.DATABASE_URL) {
+    return { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } };
+  }
+  const sup    = process.env.SUPABASE_URL || '';
+  const ref    = sup.replace('https://', '').replace('.supabase.co', '');
+  const region = process.env.SUPABASE_REGION || 'ap-southeast-2';
+  return {
+    host:     `aws-1-${region}.pooler.supabase.com`,
+    port:     5432,
+    user:     `postgres.${ref}`,
+    password: process.env.DB_PASSWORD || '',
+    database: 'postgres',
+    ssl:      { rejectUnauthorized: false }
+  };
 }
-const pool = new Pool({
-  connectionString: buildDbUrl(),
-  ssl: { rejectUnauthorized: false }
-});
+const pool = new Pool(buildDbConfig());
 
 // ── 세션 (DB 저장 - Render 재시작 대응) ───────────────────────
 const pgSession = require('connect-pg-simple')(session);
